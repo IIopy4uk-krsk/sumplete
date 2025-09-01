@@ -20,6 +20,4 @@ unix:!macx: QMAKE_LFLAGS += -Wl,-rpath,\'\$$ORIGIN\'
 # Установка QML_IMPORT_PATH и QML2_IMPORT_PATH при необходимости
 
 DISTFILES += \
-    images/circle.png \
-    images/cross.png \
     main.qml

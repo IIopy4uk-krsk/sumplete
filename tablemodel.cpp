@@ -8,9 +8,12 @@
 #define COUNT (COLUMNS * ROWS)
 #define VALUERANGE 0,9
 
+
+
+
 TableModel::TableModel(QObject *parent) : QAbstractListModel(parent)
 {
-    m_settings = new QSettings(QSettings::UserScope);
+    m_settings = new QSettings(QSettings::IniFormat, QSettings::UserScope, "Alex S.", "sumplete");
 
     if (!loadGame())
         newGame();
@@ -48,19 +51,12 @@ QVariant TableModel::data(const QModelIndex & index, int role) const {
     case Qt::DisplayRole:
         return QVariant::fromValue(m_table.value(ndx, -1));
     case ColorRole:
-        if (m_flags.value(ndx, 0) > 0)
+        if (m_flags.value(ndx, MarkUndefined) > 0)
             return QVariant::fromValue(QString("#faa"));
         else
             return QVariant::fromValue(QString("#fff"));
     case ImageRole:
-    {
-        int aa = m_currentMark.value(ndx, 0);
-        if (aa == 1)
-            return QVariant::fromValue(QString("images/cross.png"));
-        else if (aa == 2)
-            return QVariant::fromValue(QString("images/circle.png"));
-        return QString("");
-    }
+        return m_images.value(m_currentMark.value(ndx, MarkUndefined), "");
 
     default:
         return QVariant();
@@ -89,9 +85,11 @@ QVariantList TableModel::colSums() const
 
 void TableModel::toggleMark(int index)
 {
-    int val = m_currentMark.value(index, 0) + 1;
+    int val = m_currentMark.value(index, MarkUndefined) + 1;
+    if (val > MarkCrossedHint)
+        return;
 
-    if (val > 2)
+    if (val == MarkCrossedHint)
         val = 0;
 
     m_currentMark.replace(index, val);
@@ -115,7 +113,7 @@ void TableModel::calculateRowSums()
         int rsum = 0;
         for (int j = 0; j < COLUMNS; j++)
         {
-            if (m_flags.value(i * COLUMNS + j, 0) == 0)
+            if (m_flags.value(i * COLUMNS + j, MarkUndefined) == MarkUndefined)
                 rsum += m_table.value(i * COLUMNS + j, 0);
         }
         m_rowSums.append(rsum);
@@ -126,7 +124,7 @@ void TableModel::calculateRowSums()
         int csum = 0;
         for (int j = 0; j < ROWS; j++)
         {
-            if (m_flags.value(j * ROWS + i, 0) == 0)
+            if (m_flags.value(j * ROWS + i, MarkUndefined) == MarkUndefined)
                 csum += m_table.value(j * ROWS + i, 0);
         }
         m_colSums.append(csum);
@@ -143,7 +141,7 @@ void TableModel::checkForVictory()
         int rsum = 0;
         for (int j = 0; j < COLUMNS; j++)
         {
-            if (m_currentMark.value(i * COLUMNS + j, 0) != 1)
+            if ((m_currentMark.value(i * COLUMNS + j, MarkUndefined) != MarkCrossed) && (m_currentMark.value(i * COLUMNS + j, MarkUndefined) != MarkCrossedHint))
                 rsum += m_table.value(i * COLUMNS + j, 0);
         }
         if (rsum == m_rowSums.value(i, 0))
@@ -156,7 +154,7 @@ void TableModel::checkForVictory()
         int csum = 0;
         for (int j = 0; j < ROWS; j++)
         {
-            if (m_currentMark.value(j * ROWS + i, 0) != 1)
+            if ((m_currentMark.value(j * ROWS + i, MarkUndefined) != MarkCrossed) && (m_currentMark.value(j * ROWS + i, MarkUndefined) != MarkCrossedHint))
                 csum += m_table.value(j * ROWS + i, 0);
         }
         if (csum == m_colSums.value(i, 0))
@@ -167,7 +165,7 @@ void TableModel::checkForVictory()
         emit signal_winGame();
 }
 
-QString toString(QList<int> list)
+QString toString(const QList<int>& list)
 {
     QString s = "";
     for (auto item : list)
@@ -175,7 +173,7 @@ QString toString(QList<int> list)
     return s;
 }
 
-QList<int> fromString(QString s)
+QList<int> fromString(const QString& s)
 {
     QList<int> list;
 
@@ -234,11 +232,11 @@ void TableModel::newGame()
 
             m_table.append(val);
             if ((mask & (1 << j)) > 0)
-                m_flags.append(1);
+                m_flags.append(MarkCrossed);
             else
-                m_flags.append(0);
+                m_flags.append(MarkUndefined);
 
-            m_currentMark.append(0);
+            m_currentMark.append(MarkUndefined);
         }
     }
 
@@ -251,12 +249,38 @@ void TableModel::newGame()
 
 void TableModel::resetGame()
 {
-    for (auto &a : m_currentMark)
-    {
-        a = 0;
-    }
+    std::fill(m_currentMark.begin(), m_currentMark.end(), 0);
 
     saveGame();
 
     emit dataChanged(index(0,0), index(ROWS - 1,COLUMNS - 1));
+}
+
+void TableModel::makeHint()
+{
+    int cell = QRandomGenerator::global()->bounded(0, 80);
+
+    int count = 0;
+    while((m_currentMark.value(cell, MarkUndefined) != MarkUndefined) || count > 100)
+    {
+        cell = QRandomGenerator::global()->bounded(0, 80);
+
+        count++;
+    }
+
+    int mark = m_flags.value(cell);
+
+    if (mark == MarkUndefined)
+        mark = MarkValidatedHint;
+    else if (mark == MarkCrossed)
+        mark = MarkCrossedHint;
+
+
+
+    m_currentMark.replace(cell, mark);
+
+    saveGame();
+
+    auto ndx = this->index(cell / COLUMNS, cell % COLUMNS);
+    emit dataChanged(ndx, ndx);
 }

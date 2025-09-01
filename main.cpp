@@ -8,6 +8,8 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
+    app.setAttribute(Qt::AA_EnableHighDpiScaling);
+
     QQmlApplicationEngine engine;
     
     TableModel model;

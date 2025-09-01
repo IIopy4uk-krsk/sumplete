@@ -13,9 +13,6 @@ ApplicationWindow {
     visible: true
     title: "Sumplete"
 
-
-
-
     MessageDialog {
         id : winGameMsg
         title: "Начать новую игру?"
@@ -72,6 +69,12 @@ ApplicationWindow {
                 text: "Начать заново"
                 onClicked:
                     resetGameMsg.open()
+            }
+
+            Button {
+                text: "Подсказка"
+                onClicked:
+                    tableModel.makeHint()
             }
         }
 

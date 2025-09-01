@@ -3,5 +3,7 @@
         <file>main.qml</file>
         <file>images/circle.png</file>
         <file>images/cross.png</file>
+        <file>images/circle_hint.png</file>
+        <file>images/cross_hint.png</file>
     </qresource>
 </RCC>
